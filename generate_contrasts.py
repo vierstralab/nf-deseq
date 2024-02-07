@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 import itertools
+from optparse import OptionParser
 
 
 parser = OptionParser()
@@ -18,4 +19,4 @@ clusters = meta[coi].drop_duplicates()
 clusters_comb = itertools.combinations(clusters, 2)
 
 for i in clusters_comb:
-    print(list(i))
+	print(i[0] + ',' + i[1])
