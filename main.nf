@@ -52,6 +52,8 @@ process pydeseq_contrast {
 	"""
 }
 
+
+
 workflow all_contrasts {
         Channel.fromPath(params.meta)
         | get_all_contrasts
