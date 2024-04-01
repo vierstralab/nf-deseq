@@ -54,6 +54,39 @@ process pydeseq_contrast {
 }
 
 
+process get_all_contrasts_r {
+	conda '/home/acote/miniconda3/envs/rdeseq'
+
+	input:
+		path(meta)
+		val(params.meta_column)
+
+	tag "${meta}:${coi}"
+
+	output:
+		stdout
+
+	script:
+	"""
+	Rscript $launchDir/generate_contrasts.R ${meta} ${params.meta_column}
+	
+	"""
+}
+
+process run_rdeseq {
+	conda '/home/acote/miniconda3/envs/rdeseq'
+
+	input:
+		each(contrast)
+
+	tag "${contrast}"
+	
+	script:
+	"""
+	Rscript $launchDir/run_rdeseq.R ${params.index_dir} ${params.meta_file} ${params.meta_column} ${contrast} --n_cpus=${params.n_cpus} --output_dir=${params.output_dir}
+	"""
+}
+
 
 workflow all_contrasts {
         Channel.fromPath(params.meta)
@@ -61,6 +94,14 @@ workflow all_contrasts {
 	| flatMap(n -> n.split('\n'))
 	| pydeseq_contrast
 }
+
+workflow rdeseq_allcontrasts {
+        Channel.fromPath(params.meta)
+        | get_all_contrasts_r
+	| flatMap(n -> n.split('\n'))
+	| run_rdeseq
+}
+
 
 // workflow all_contrasts {
 // 	Channel.fromPath(params.meta)
