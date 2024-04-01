@@ -38,6 +38,7 @@ process get_all_contrasts {
 }
 
 process pydeseq_contrast {
+	label 'bigmem'
 	conda '/home/acote/miniconda3/envs/nf-pydeseq'
 
 	input:
