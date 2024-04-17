@@ -59,9 +59,8 @@ process get_all_contrasts_r {
 
 	input:
 		path(meta)
-		val(params.meta_column)
 
-	tag "${meta}:${coi}"
+	tag "${meta}:${params.meta_column}"
 
 	output:
 		stdout
@@ -83,7 +82,8 @@ process run_rdeseq {
 	
 	script:
 	"""
-	Rscript $launchDir/run_rdeseq.R ${params.index_dir} ${params.meta_file} ${params.meta_column} ${contrast} --n_cpus=${params.n_cpus} --output_dir=${params.output_dir}
+	echo "${contrast}"
+	Rscript $launchDir/run_rdeseq.R ${params.index_dir} ${params.meta_file} ${params.meta_column} "${contrast}" ${params.n_cpus} ${params.output_dir}
 	"""
 }
 
@@ -96,12 +96,17 @@ workflow all_contrasts {
 }
 
 workflow rdeseq_allcontrasts {
-        Channel.fromPath(params.meta)
+        Channel.fromPath(params.meta_file)
         | get_all_contrasts_r
 	| flatMap(n -> n.split('\n'))
 	| run_rdeseq
 }
 
+workflow rdeseq_generatecontrasts {
+        Channel.fromPath(params.meta_file)
+        | get_all_contrasts_r
+	| view()
+}
 
 // workflow all_contrasts {
 // 	Channel.fromPath(params.meta)

@@ -1,4 +1,5 @@
 #!/bin/bash
+suppressPackageStartupMessages({
 library(reticulate)
 np <- import("numpy")
 library(tidyverse)
@@ -8,6 +9,8 @@ library(DESeq2)
 library(readxl)
 library(argparser, quietly=TRUE)
 library("BiocParallel")
+})
+
 register(MulticoreParam(40))
 
 today <-
@@ -22,14 +25,19 @@ p <- add_argument(p, "index_dir", help='default location to look for all files')
 p <- add_argument(p, "meta_file", help="metadata spreadsheet, currently excel format")
 p <- add_argument(p, "meta_column", help="column of meta file to use for comparisons")
 p <- add_argument(p, "meta_comparison", help="items in meta column for comparison that will be used for this run, in a vector")
+p <- add_argument(p, "n_cpus", help="number of cores to specify for biocparallel", default=40)
+p <- add_argument(p, "output_dir", help='output directory for published files', default=paste0('/net/seq/data2/projects/encode4/4025_index/deseq/', today,'/'))
 
-p <- add_argument(p, "--count_file", help="count matrix, .npy format", default = paste0(index_dir, 'counts.only_autosomes.filtered.matrix.npy'))
-p <- add_argument(p, "--scale_factors", help="scale factors to apply to count matrix during normalization, .npy format", default = paste0(index_dir, 'norm/normalized.only_autosomes.filtered.scale_factors.npy'))
-p <- add_argument(p, "--n_cpus", help="number of cores to specify for biocparallel", default=40)
-p <- add_argument(p, "--output_dir", help='output directory for published files', default=paste0('/net/seq/data2/projects/encode4/4025_index/deseq/', today,'/'))
+p <- add_argument(p, "--count_file", help="count matrix, .npy format", default = 'counts.only_autosomes.filtered.matrix.npy')
+p <- add_argument(p, "--scale_factors", help="scale factors to apply to count matrix during normalization, .npy format", default = 'norm/normalized.only_autosomes.filtered.scale_factors.npy')
+#p <- add_argument(p, "--n_cpus", help="number of cores to specify for biocparallel", default=40)
+#p <- add_argument(p, "--output_dir", help='output directory for published files', default=paste0('/net/seq/data2/projects/encode4/4025_index/deseq/', today,'/'))
 
 # Parse the command line arguments
 argv <- parse_args(p)
+
+print(argv$meta_column)
+print(argv$meta_comparison)
 
 # Rscript round.R 3.141 -d 2
 
@@ -39,45 +47,51 @@ sample_order
 test_meta <- read_excel(argv$meta_file) %>% filter(ag_id %in% sample_order$X1)
 test_meta <- test_meta[ order(match(test_meta$ag_id, sample_order$X1)), ]
 test_meta$combined_annotation <- paste(test_meta$core_annotation, test_meta$extended_annotation, sep = ' ')
+print(test_meta$combined_annotation)
+
 meta <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
+print(meta$stripped_cluster)
 
-comparisons <- argv$meta_comparison
+comparisons <- argv$meta_comparison %>% str_trim() %>% str_split('_')
+print(comparisons)
 
-print(paste0('subsetting annotations in ' + str(comparisons)))
-meta_sub <- meta %>% filter(stripped_cluster %in% comparisons)
+#print(paste0('subsetting annotations in ',str(comparisons)))
+meta_sub <- meta %>% filter(argv$meta_column %in% comparisons)
 print(head(meta_sub$ag_id))
 print(paste0('number of samples: ',nrow(meta_sub)))
 cluster_group <- paste0(str_replace_all(comparisons[1], regex("\\W+"), ''), 'vs', str_replace_all(comparisons[2], regex("\\W+"), ''))
 
 
 
-count_file = argv$count_file
+count_file = paste0(argv$index_dir,argv$count_file)
 print(paste0('loading counts at ',count_file))
 counts <- np$load(count_file, mmap_mode='r')
 print('converting to data frame')
 counts = data.frame(counts %>% t(), row.names = meta$ag_id)
-print(paste0('count file has ',nrow(counts), 'rows and ', ncol(counts), ' columns'))
+print(paste0('count file has ',nrow(counts), ' rows and ', ncol(counts), ' columns'))
 print('subsetting to sample groups')
 counts <- counts %>% filter(row.names(counts) %in% meta_sub$ag_id)
-counts_sub <- counts[!(colSums(counts) == 0)]
-print(paste0('dimensions of count matrix after subsetting is: ', str(dim(counts))))
 
-sf_file = argv$scale_factors
+counts_sub <- counts[!(colSums(counts) == 0)]
+print(paste0('dimensions of count matrix after subsetting is: ', nrow(counts_sub), ' rows and ', ncol(counts_sub), ' columns'))
+
+sf_file = paste0(argv$index_dir, argv$scale_factors)
 print(paste0('loading scale factors at ',sf_file))
 norm_factors <- np$load(sf_file, mmap_mode='r')
 print('converting to data frame')
 norm_factors = data.frame(norm_factors %>% t(), row.names = meta$ag_id)
-print(paste0('scale factors file has ',nrow(norm_factors), 'rows and ', ncol(norm_factors), ' columns'))
+print(paste0('scale factors file has ',nrow(norm_factors), ' rows and ', ncol(norm_factors), ' columns'))
 print('subsetting to sample groups')
 norm_factors <- norm_factors %>% filter(row.names(norm_factors) %in% meta_sub$ag_id)
+print(paste0('scale factors matrix has ',nrow(norm_factors), ' rows and ', ncol(norm_factors), ' columns after removing '))
 norm_factors <- norm_factors[!(colSums(counts) == 0)]
 print(paste0('dimensions of normalization matrix after subsetting is: ', str(dim(norm_factors))))
 print('converting to data matrix')
 norm_factors = norm_factors %>% t() %>% data.matrix()
 
-dds <- DESeqDataSetFromMatrix(countData = counts %>% t(),
+dds <- DESeqDataSetFromMatrix(countData = counts_sub %>% t(),
                               colData = meta_sub,
-                              design= ~ stripped_cluster)
+                              design= ~ argv$meta_column)
 normalizationFactors(dds) <- norm_factors
 
 dds <- DESeq(dds, parallel=TRUE)

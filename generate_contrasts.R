@@ -17,8 +17,13 @@ argv <- parse_args(p)
 # # Rscript round.R 3.141 -d 2
 test_meta <- read_excel(argv$meta_file)
 test_meta$combined_annotation <- paste(test_meta$core_annotation, test_meta$extended_annotation, sep = ' ')
-meta_vars <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
-meta_combinations <- combn(meta_vars$meta_column, 2, simplify=FALSE)
-for (i in meta_combinations) {
-  print(i)
-}
+test_meta <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
+#print(test_meta$stripped_cluster %>% unique())
+meta_combinations <- combn(test_meta[[argv$meta_column]] %>% unique(), 2, simplify=FALSE)
+#meta_combinations
+concat_comb = sapply(meta_combinations, paste, collapse = "_")
+print(as.data.frame(concat_comb),row.names=F)
+#print(length(meta_combinations))
+#for (i in meta_combinations) {
+#  print(i)
+#}
