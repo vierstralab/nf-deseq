@@ -102,6 +102,12 @@ workflow rdeseq_allcontrasts {
 	| run_rdeseq
 }
 
+workflow rdeseq_specifiedcontrast {
+        Channel.fromPath(params.contrast_file)
+	| flatMap(n -> n.split('\n'))
+	| run_rdeseq
+}
+
 workflow rdeseq_generatecontrasts {
         Channel.fromPath(params.meta_file)
         | get_all_contrasts_r

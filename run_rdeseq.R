@@ -26,10 +26,10 @@ p <- add_argument(p, "meta_file", help="metadata spreadsheet, currently excel fo
 p <- add_argument(p, "meta_column", help="column of meta file to use for comparisons")
 p <- add_argument(p, "meta_comparison", help="items in meta column for comparison that will be used for this run, in a vector")
 p <- add_argument(p, "n_cpus", help="number of cores to specify for biocparallel", default=40)
-p <- add_argument(p, "output_dir", help='output directory for published files', default=paste0('/net/seq/data2/projects/encode4/4025_index/deseq/', today,'/'))
+p <- add_argument(p, "output_dir", help='output directory for published files', default=paste0('/net/seq/data2/projects/encode4/4078_index/deseq/', today,'/'))
 
 p <- add_argument(p, "--count_file", help="count matrix, .npy format", default = 'counts.only_autosomes.filtered.matrix.npy')
-p <- add_argument(p, "--scale_factors", help="scale factors to apply to count matrix during normalization, .npy format", default = 'norm/normalized.only_autosomes.filtered.scale_factors.npy')
+p <- add_argument(p, "--scale_factors", help="scale factors to apply to count matrix during normalization, .npy format", default = 'normalization/normalized.only_autosomes.filtered.scale_factors.mean_normalized.npy')
 #p <- add_argument(p, "--n_cpus", help="number of cores to specify for biocparallel", default=40)
 #p <- add_argument(p, "--output_dir", help='output directory for published files', default=paste0('/net/seq/data2/projects/encode4/4025_index/deseq/', today,'/'))
 
@@ -44,13 +44,19 @@ print(argv$meta_comparison)
 sample_order <- read_table(paste0(argv$index_dir, 'samples_order.txt'), col_names=FALSE)
 sample_order
 
-test_meta <- read_excel(argv$meta_file) %>% filter(ag_id %in% sample_order$X1)
-test_meta <- test_meta[ order(match(test_meta$ag_id, sample_order$X1)), ]
-test_meta$combined_annotation <- paste(test_meta$core_annotation, test_meta$extended_annotation, sep = ' ')
-print(test_meta$combined_annotation)
+# test_meta <- read_excel(argv$meta_file) %>% filter(ag_id %in% sample_order$X1)
 
-meta <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
-print(meta$stripped_cluster)
+test_meta <- read.csv(argv$meta_file, sep = '\t', header = TRUE) %>% filter(ag_id %in% sample_order$X1)
+
+test_meta <- test_meta[ order(match(test_meta$ag_id, sample_order$X1)), ]
+# test_meta$combined_annotation <- paste(test_meta$core_annotation, test_meta$extended_annotation, sep = ' ')
+# print(test_meta$combined_annotation)
+
+# meta <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
+# print(meta$stripped_cluster)
+
+meta <- test_meta %>% mutate('stripped_annotation' = str_replace_all(meta_column, regex("\\W+"), ''))
+print(meta$stripped_annotation)
 
 comparisons <- argv$meta_comparison %>% str_trim() %>% str_split('_')
 print(comparisons)
