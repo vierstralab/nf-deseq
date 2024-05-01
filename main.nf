@@ -74,6 +74,7 @@ process get_all_contrasts_r {
 
 process run_rdeseq {
 	conda '/home/acote/miniconda3/envs/rdeseq'
+//	label 'bigmem'
 
 	input:
 		each(contrast)
@@ -102,9 +103,20 @@ workflow rdeseq_allcontrasts {
 	| run_rdeseq
 }
 
+workflow check_contrast {
+        Channel.fromPath(params.contrast_file)
+                | map { row-> row } \
+		| splitCsv( header: false )
+		| view()
+//      | flatMap(n -> n.split('\n'))
+//        | run_rdeseq
+}
+
 workflow rdeseq_specifiedcontrast {
         Channel.fromPath(params.contrast_file)
-	| flatMap(n -> n.split('\n'))
+		| splitCsv( header: false )
+		| map { row-> row }
+//	| flatMap(n -> n.split('\n'))
 	| run_rdeseq
 }
 

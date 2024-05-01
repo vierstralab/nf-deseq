@@ -15,14 +15,16 @@ p <- add_argument(p, "meta_column", help="column of meta file to use for compari
 argv <- parse_args(p)
 
 # # Rscript round.R 3.141 -d 2
-test_meta <- read_excel(argv$meta_file)
-test_meta$combined_annotation <- paste(test_meta$core_annotation, test_meta$extended_annotation, sep = ' ')
-test_meta <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
+test_meta <- read_csv(argv$meta_file, show_col_types=FALSE)
+#test_meta$combined_annotation <- paste(test_meta$core_annotation, test_meta$extended_annotation, sep = ' ')
+#test_meta <- test_meta %>% mutate('stripped_cluster' = str_replace_all(combined_annotation, regex("\\W+"), ''))
 #print(test_meta$stripped_cluster %>% unique())
 meta_combinations <- combn(test_meta[[argv$meta_column]] %>% unique(), 2, simplify=FALSE)
 #meta_combinations
 concat_comb = sapply(meta_combinations, paste, collapse = "_")
-print(as.data.frame(concat_comb),row.names=F)
+write.table(concat_comb, col.names = FALSE, quote = FALSE, row.names=FALSE)
+#colnames(concat_comb) <- NULL
+#print(concat_comb,row.names=FALSE)
 #print(length(meta_combinations))
 #for (i in meta_combinations) {
 #  print(i)
