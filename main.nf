@@ -74,7 +74,7 @@ process get_all_contrasts_r {
 
 process run_rdeseq {
 	conda '/home/acote/miniconda3/envs/rdeseq'
-//	label 'bigmem'
+	label 'bigmem'
 
 	input:
 		each(contrast)
